@@ -10,7 +10,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Message
 import android.view.KeyEvent
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.WindowManager
+import android.widget.FrameLayout
+import android.widget.Toast
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -29,7 +32,11 @@ import android.webkit.WebViewClient
  */
 class MainActivity : Activity() {
 
+    private lateinit var root: FrameLayout
     private lateinit var web: WebView
+
+    /** In-app video player laid over the itinerary, so Back drops straight back to where we were. */
+    private var player: WebView? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,7 +46,9 @@ class MainActivity : Activity() {
         if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
         web = WebView(this)
         web.setBackgroundColor(Color.parseColor("#1e1b2e"))
-        setContentView(web)
+        root = FrameLayout(this)
+        root.addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        setContentView(root)
 
         web.settings.apply {
             javaScriptEnabled = true
@@ -97,7 +106,7 @@ class MainActivity : Activity() {
 
     /** True when the link was handed to another app and the WebView shouldn't load it. */
     private fun handleExternally(uri: Uri): Boolean {
-        if (YouTube.isYouTube(uri)) return YouTube.open(this, uri)
+        if (YouTube.isYouTube(uri)) return openYouTube(uri)
         if (uri.scheme == "http" || uri.scheme == "https" || uri.scheme == "about" || uri.scheme == "data") return false
         // intent:, market:, tel: and friends. Nothing useful to show in the WebView if they fail.
         try {
@@ -106,6 +115,76 @@ class MainActivity : Activity() {
             // ignore
         }
         return true
+    }
+
+    /**
+     * A YouTube link. Videos play straight away. Search links (the itinerary's ▶️ Videos buttons) are
+     * looked up first, because the Fire TV YouTube app ignores search links. Returns false only for
+     * other YouTube pages when there's no YouTube app, so the WebView shows them.
+     */
+    private fun openYouTube(uri: Uri): Boolean {
+        YouTube.videoId(uri)?.let { play(it); return true }
+        val query = YouTube.searchQuery(uri)
+            ?: return YouTube.preferredPackage(this)?.let { YouTube.startFirst(this, listOf(YouTube.view(uri.toString(), it))) } ?: false
+        Toast.makeText(this, "Finding a video…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val id = YouTube.topVideoId(query)
+            runOnUiThread {
+                when {
+                    id != null -> play(id)
+                    else -> {
+                        Toast.makeText(this, "Couldn't find a video for “$query”", Toast.LENGTH_LONG).show()
+                        YouTube.preferredPackage(this)?.let { YouTube.startFirst(this, listOf(YouTube.launchIntent(it))) }
+                    }
+                }
+            }
+        }.start()
+        return true
+    }
+
+    private fun play(id: String) {
+        val handedOff = !YouTube.playInApp(this) &&
+            YouTube.startFirst(this, YouTube.videoIntents(id, YouTube.preferredPackage(this)))
+        if (!handedOff) playInApp(id)
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun playInApp(id: String) {
+        closePlayer()
+        val p = WebView(this)
+        p.setBackgroundColor(Color.BLACK)
+        p.settings.javaScriptEnabled = true
+        p.settings.domStorageEnabled = true
+        p.settings.mediaPlaybackRequiresUserGesture = false
+        p.webChromeClient = WebChromeClient()
+        p.webViewClient = object : WebViewClient() {
+            // Keep the player from wandering off (e.g. clicking the YouTube logo).
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = request.isForMainFrame
+            override fun onPageFinished(view: WebView, url: String) {
+                view.evaluateJavascript("document.querySelector('iframe').focus()", null)
+            }
+        }
+        // The embed needs a referrer, so the page gets the site's origin as its base URL.
+        val html = """
+            <!doctype html><html><body style="margin:0;background:#000;overflow:hidden">
+            <iframe src="https://www.youtube.com/embed/$id?autoplay=1&rel=0&playsinline=1"
+              style="border:0;width:100vw;height:100vh" referrerpolicy="strict-origin-when-cross-origin"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+            </body></html>
+        """.trimIndent()
+        p.loadDataWithBaseURL(HOME_URL, html, "text/html", "utf-8", null)
+        root.addView(p, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        p.requestFocus()
+        player = p
+    }
+
+    private fun closePlayer() {
+        player?.let {
+            root.removeView(it)
+            it.destroy()
+        }
+        player = null
+        web.requestFocus()
     }
 
     private fun showOffline() {
@@ -132,6 +211,10 @@ class MainActivity : Activity() {
 
     @Deprecated("Fine on Fire OS; we don't opt in to predictive back")
     override fun onBackPressed() {
+        if (player != null) {
+            closePlayer()
+            return
+        }
         web.evaluateJavascript("(typeof window.japan27TvBack === 'function' && window.japan27TvBack() === true)") { handled ->
             when {
                 handled == "true" -> Unit
@@ -143,14 +226,22 @@ class MainActivity : Activity() {
 
     /** The remote's ☰ button. */
     private fun showMenu() {
-        val items = arrayOf("Reload", "Go to the start page", "YouTube link test", "Version ${BuildConfig.VERSION_NAME}")
+        val inApp = YouTube.playInApp(this)
+        val videos = if (inApp) "Videos play here in Japan27 · switch to the YouTube app"
+        else "Videos play in the YouTube app · switch to playing here"
+        val items = arrayOf("Reload", "Go to the start page", videos, "YouTube link test", "Version ${BuildConfig.VERSION_NAME}")
         AlertDialog.Builder(this)
             .setTitle("Japan27 TV")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> web.reload()
                     1 -> web.loadUrl(HOME_URL)
-                    2 -> startActivity(Intent(this, LinkTestActivity::class.java))
+                    2 -> {
+                        YouTube.setPlayInApp(this, !inApp)
+                        val now = if (inApp) "the YouTube app (signed in)" else "Japan27 (Back returns instantly)"
+                        Toast.makeText(this, "Videos now play in $now", Toast.LENGTH_LONG).show()
+                    }
+                    3 -> startActivity(Intent(this, LinkTestActivity::class.java))
                 }
             }
             .show()

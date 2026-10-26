@@ -21,7 +21,6 @@ import android.widget.TextView
 class LinkTestActivity : Activity() {
 
     private lateinit var status: TextView
-    private lateinit var modeLabel: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,17 +54,18 @@ class LinkTestActivity : Activity() {
             })
         }
 
-        col.addView(text("Itinerary search links use:", 22f, bold = true))
-        modeLabel = text("", 18f).also { col.addView(it) }
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        for (mode in YouTube.SearchMode.entries) {
-            row.addView(button("Use ${searchCode(mode)}") {
-                YouTube.setSearchMode(this, mode)
-                showMode()
-            })
-        }
-        col.addView(row)
-        showMode()
+        col.addView(text("Itinerary search links", 22f, bold = true))
+        col.addView(text("The Fire TV YouTube app ignores search links, so Japan27 looks up the top result and plays that video.", 18f))
+        col.addView(button("Look up and play the top result") {
+            setStatus("Looking up “$QUERY”…")
+            Thread {
+                val id = YouTube.topVideoId(QUERY)
+                runOnUiThread {
+                    if (id == null) setStatus("Lookup failed (no network, or YouTube changed its page)")
+                    else tryIntent(YouTube.view("https://www.youtube.com/watch?v=$id", pkg))
+                }
+            }.start()
+        })
 
         setContentView(ScrollView(this).apply { addView(col) })
     }
@@ -78,11 +78,6 @@ class LinkTestActivity : Activity() {
 
     private fun setStatus(s: String) {
         status.text = s
-    }
-
-    private fun showMode() {
-        val mode = YouTube.searchMode(this)
-        modeLabel.text = "${searchCode(mode)}: ${mode.label}"
     }
 
     private fun searchCode(mode: YouTube.SearchMode) = "S" + (mode.ordinal + 1)

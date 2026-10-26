@@ -7,14 +7,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.widget.Toast
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
- * Opens YouTube links in the native TV YouTube app instead of the WebView.
+ * YouTube links: which app takes them, and how search links become a video.
  *
- * Which intent formats the Fire TV YouTube app honours isn't documented, so search links use a
- * format picked on the device in the YouTube link test screen (stored in prefs). Video links
- * try the common formats in order.
+ * Tested on Kevin's Fire TV Stick 4K Max (Oct 26, 2026): the Fire TV YouTube app plays
+ * VIEW https://www.youtube.com/watch?v=ID (with or without its package set), but ignores vnd.youtube:ID
+ * and every search format (it just opens its home screen). So search links are resolved to the top
+ * result's video id first.
  */
 object YouTube {
 
@@ -28,17 +30,19 @@ object YouTube {
 
     private val HOSTS = setOf("youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "music.youtube.com")
 
-    /** How search links are opened. Ids are stored in prefs, so don't rename them. */
+    /** Search formats tried in the link test screen. None worked on Fire TV; kept for other devices. */
     enum class SearchMode(val label: String) {
         RESULTS_URL("VIEW youtube.com/results?search_query=…"),
         SEARCH_ACTION("SEARCH action with a query extra"),
         TV_HASH_URL("VIEW youtube.com/tv#/results?search_query=…"),
-        APP_HOME("Open the YouTube app home, show the search words"),
+        APP_HOME("Open the YouTube app home"),
         TV_SEARCH_HASH("VIEW youtube.com/tv#/search?q=…"),
     }
 
     private const val PREFS = "japan27tv"
-    private const val KEY_SEARCH_MODE = "search_mode"
+    private const val KEY_PLAY_IN_APP = "play_in_app"
+
+    private val topVideoCache = HashMap<String, String>()
 
     fun isYouTube(uri: Uri): Boolean =
         uri.scheme == "vnd.youtube" || (uri.scheme in setOf("http", "https") && uri.host?.lowercase() in HOSTS)
@@ -53,13 +57,12 @@ object YouTube {
 
     fun preferredPackage(ctx: Context): String? = installedPackages(ctx).firstOrNull()
 
-    fun searchMode(ctx: Context): SearchMode {
-        val saved = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_SEARCH_MODE, null)
-        return SearchMode.entries.firstOrNull { it.name == saved } ?: SearchMode.RESULTS_URL
-    }
+    /** True: play inside Japan27 (Back returns instantly, not signed in). False: the YouTube app. */
+    fun playInApp(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_PLAY_IN_APP, false)
 
-    fun setSearchMode(ctx: Context, mode: SearchMode) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_SEARCH_MODE, mode.name).apply()
+    fun setPlayInApp(ctx: Context, inApp: Boolean) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_PLAY_IN_APP, inApp).apply()
     }
 
     /** Video id from watch?v=, youtu.be/, /shorts/, /embed/, /live/ or vnd.youtube: links. */
@@ -75,7 +78,30 @@ object YouTube {
     fun searchQuery(uri: Uri): String? =
         if (uri.path?.trimEnd('/') == "/results") uri.getQueryParameter("search_query") ?: uri.getQueryParameter("q") else null
 
-    // Never send a youtube.com URL without a package: Fire TV hands those to Silk, which plays logged out.
+    /**
+     * The first regular video in YouTube's search results, or null. Blocking: call off the main thread.
+     * Reads the results page's embedded JSON; if YouTube changes it, links fall back to the app's home screen.
+     */
+    fun topVideoId(query: String): String? {
+        synchronized(topVideoCache) { topVideoCache[query]?.let { return it } }
+        return try {
+            val url = URL("https://www.youtube.com/results?search_query=" + Uri.encode(query))
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = 5000
+                readTimeout = 5000
+                setRequestProperty("User-Agent", DESKTOP_UA)
+                setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+            }
+            val html = conn.inputStream.bufferedReader().use { it.readText() }
+            conn.disconnect()
+            Regex("\"videoRenderer\":\\{\"videoId\":\"([A-Za-z0-9_-]{11})\"").find(html)?.groupValues?.get(1)
+                ?.also { id -> synchronized(topVideoCache) { topVideoCache[query] = id } }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Fire TV hands package-less youtube.com URLs to the YouTube app, but other devices may pick a browser.
     fun videoIntents(id: String, pkg: String?): List<Intent> = listOfNotNull(
         pkg?.let { view("https://www.youtube.com/watch?v=$id", it) },
         pkg?.let { view("vnd.youtube:$id", it) },
@@ -100,7 +126,7 @@ object YouTube {
     fun launchIntent(pkg: String): Intent =
         Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER).setPackage(pkg)
 
-    private fun view(url: String, pkg: String?) = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+    fun view(url: String, pkg: String?) = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
         pkg?.let { setPackage(it) }
     }
 
@@ -119,37 +145,12 @@ object YouTube {
         return false
     }
 
-    /**
-     * Opens a YouTube link natively. Returns false when no YouTube app took it, so the caller can
-     * load it in the WebView instead.
-     */
-    fun open(activity: Activity, uri: Uri): Boolean {
-        val pkg = preferredPackage(activity)
-        videoId(uri)?.let { id -> return startFirst(activity, videoIntents(id, pkg)) }
-
-        val query = searchQuery(uri)
-        if (query != null) {
-            if (pkg == null) return false
-            val mode = searchMode(activity)
-            val intents = listOfNotNull(
-                searchIntent(mode, query, pkg),
-                pkg?.let { launchIntent(it) },
-                pkg?.let { activity.packageManager.getLaunchIntentForPackage(it) },
-            )
-            val ok = startFirst(activity, intents)
-            if (ok && mode == SearchMode.APP_HOME) {
-                Toast.makeText(activity, "Search YouTube for: $query", Toast.LENGTH_LONG).show()
-            }
-            return ok
-        }
-
-        // A channel, playlist or other YouTube page: hand the URL over as-is.
-        return pkg != null && startFirst(activity, listOf(view(uri.toString(), pkg)))
-    }
-
     /** Short description of which activity would take an intent, for the link test screen. */
     fun describeTarget(ctx: Context, intent: Intent): String {
         val info = ctx.packageManager.resolveActivity(intent, 0) ?: return "no app accepts this"
         return info.activityInfo.packageName + "/" + info.activityInfo.name.substringAfterLast('.')
     }
+
+    private const val DESKTOP_UA =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 }

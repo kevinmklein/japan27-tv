@@ -26,17 +26,18 @@ Japan27 now sits in **Apps** (the three-square tile on the home row). To pin it 
 |---|---|
 | ◀ ▶ ▲ ▼ | Move between cards and buttons (a pink ring shows where you are) |
 | **OK** | Press the highlighted button. **▶️ Videos** opens in YouTube |
-| **Back** | In YouTube: back to Japan27. In Japan27: close a popup, then back a page, then exit |
-| **☰** | Japan27 menu: Reload, Start page, YouTube link test, version |
+| **Play/Pause** | On an activity card: play its video |
+| **Back** | Close the in-app video, close a popup, back a page, then exit |
+| **☰** | Japan27 menu: Reload, Start page, where videos play, YouTube link test, version |
 
-## 4. First-time check: the YouTube link test (2 min)
+## 4. Videos: in the YouTube app or right here
 
-Fire TV's YouTube app doesn't document which links it accepts, so the app includes a test screen. Press **☰ → YouTube link test**, then try each button. After each one, press **Back** to return.
+**▶️ Videos** finds the top YouTube video for that place and plays it. The Fire TV YouTube app can't open search results, so Japan27 does the search itself. Under **☰** you can choose where videos play:
 
-- **V1, V2, V3** should open a short video ("Me at the zoo").
-- **S1, S2, S3, S5** should open YouTube *search results* for Fushimi Inari. **S4** just opens YouTube's home screen.
+- **The YouTube app** (default): you're signed in. To get back, press **Home**, then pick Japan27 from the home row. It reopens where you left off. Pin it first (section 2, "Move to front") so it's one click away.
+- **Here in Japan27**: plays full screen inside the app, not signed in. **Back** returns straight to the same card. Best for a walkthrough.
 
-Note which ones open the right thing. Then, under **Itinerary search links use**, press **Use S…** for the best search format that worked. Send the results to Claude so the app's defaults can be set. If no S button shows search results, the itinerary will switch to one chosen video per place.
+The **☰ → YouTube link test** screen is for troubleshooting. On the 4K Max, V1 and V3 play a video; V2 and every search format (S1–S5) only open YouTube's home screen.
 
 ## 5. Updating
 
