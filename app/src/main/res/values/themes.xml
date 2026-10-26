@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sumi background so the TV doesn't flash white while the page loads. -->
+    <style name="Theme.Japan27" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/sumi</item>
+        <item name="android:colorAccent">@color/vermilion</item>
+    </style>
+
+    <color name="sumi">#1e1b2e</color>
+    <color name="vermilion">#d9472b</color>
+</resources>
