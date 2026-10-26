@@ -13,7 +13,7 @@ import java.net.URL
 /**
  * YouTube links: which app takes them, and how search links become a video.
  *
- * Tested on Kevin's Fire TV Stick 4K Max (Oct 26, 2026): the Fire TV YouTube app plays
+ * Tested on Kevin's Fire TV Stick 4K (AFTMM, Fire OS 6.7; Oct 26, 2026): the Fire TV YouTube app plays
  * VIEW https://www.youtube.com/watch?v=ID (with or without its package set), but ignores vnd.youtube:ID
  * and every search format (it just opens its home screen). So search links are resolved to the top
  * result's video id first.

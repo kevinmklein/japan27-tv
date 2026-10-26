@@ -2,7 +2,7 @@
 
 A small Fire TV app that shows https://jp27.netlify.app full screen and sends every **▶️ Videos** button to the real YouTube app, where you're signed in. It's free, with no subscriptions and no app store.
 
-## 1. One-time setup on the Fire TV Stick 4K Max (5 min)
+## 1. One-time setup on the Fire TV (5 min)
 
 1. **Install Downloader.** On the home screen go to **Find → Search**, type `Downloader` and install the orange **Downloader** app (by AFTVnews).
 2. **Turn on Developer Options.** Go to **Settings → My Fire TV → About**. Highlight the first line (the device name, e.g. "Fire TV Stick 4K Max") and press **OK 7 times** until it says you're a developer.
@@ -18,7 +18,7 @@ A small Fire TV app that shows https://jp27.netlify.app full screen and sends ev
 3. When the download finishes, choose **Install**, then **Open**.
 4. Downloader offers to delete the APK file. Choose **Delete**, since it's no longer needed.
 
-Japan27 now sits in **Apps** (the three-square tile on the home row). To pin it to the front, highlight it, press **☰** and choose **Move to front**.
+Japan27 now sits at the bottom of **Your Apps & Channels** (the three-squares tile on the home row). To pin it to the front, highlight it, press **☰** and choose **Move to front**.
 
 ## 3. Using it with the remote
 
@@ -34,14 +34,24 @@ Japan27 now sits in **Apps** (the three-square tile on the home row). To pin it 
 
 **▶️ Videos** finds the top YouTube video for that place and plays it. The Fire TV YouTube app can't open search results, so Japan27 does the search itself. Under **☰** you can choose where videos play:
 
-- **The YouTube app** (default): you're signed in. To get back, press **Home**, then pick Japan27 from the home row. It reopens where you left off. Pin it first (section 2, "Move to front") so it's one click away.
-- **Here in Japan27**: plays full screen inside the app, not signed in. **Back** returns straight to the same card. Best for a walkthrough.
+- **The YouTube app** (default): signed in, with YouTube Premium (no ads). YouTube's Back button never returns to Japan27; it goes to YouTube's own screens. To come back, press **Home → ▶ → ▶ → OK**. Japan27 is pinned first on the home row, and it reopens on the same card.
+- **Here in Japan27**: plays full screen inside the app. **Back** returns straight to the same card. It isn't signed in to YouTube, so expect ads.
 
-The **☰ → YouTube link test** screen is for troubleshooting. On the 4K Max, V1 and V3 play a video; V2 and every search format (S1–S5) only open YouTube's home screen.
+The **☰ → YouTube link test** screen is for troubleshooting. On our stick, V1 and V3 play a video; V2 and every search format (S1–S5) only open YouTube's home screen.
 
-## 5. Updating
+## 5. The tile on the home screen
 
-When there's a new version, open **Downloader**, go to the same address (`jp27.netlify.app/tv`), and choose **Install**. It installs over the old version and keeps your settings. Downloader remembers recent addresses, so there's nothing to retype.
+Our stick is the original **Fire TV Stick 4K (2018, model AFTMM, Fire OS 6)**. Its home screen shows every sideloaded app as its square icon on a grey tile; only Appstore apps get full-width artwork, which Amazon's servers supply. A landscape icon just gets squashed into the square, so the square Mt. Fuji icon is the best this TV can show.
+
+## 6. Updating (uninstall first)
+
+Fire OS 6 loses a sideloaded app's tile image when the app is updated in place: you get a broken-picture tile, and the app vanishes from **Your Apps**. So update like this:
+
+1. **Settings → Applications → Manage Installed Applications → Japan27 → Uninstall.**
+2. Open **Downloader**, go to `jp27.netlify.app/tv` (Downloader remembers it), and choose **Install**.
+3. Open Japan27 once, then in **Your Apps** highlight it, press **☰** and choose **Move to front**.
+
+Uninstalling only resets the ☰ "where videos play" choice. The itinerary itself is the website, so it updates without reinstalling anything. An APK update is only needed when the TV app itself changes.
 
 ---
 
