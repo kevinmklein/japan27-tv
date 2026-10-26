@@ -34,6 +34,7 @@ object YouTube {
         SEARCH_ACTION("SEARCH action with a query extra"),
         TV_HASH_URL("VIEW youtube.com/tv#/results?search_query=…"),
         APP_HOME("Open the YouTube app home, show the search words"),
+        TV_SEARCH_HASH("VIEW youtube.com/tv#/search?q=…"),
     }
 
     private const val PREFS = "japan27tv"
@@ -86,6 +87,7 @@ object YouTube {
         return when (mode) {
             SearchMode.RESULTS_URL -> view("https://www.youtube.com/results?search_query=$q", pkg)
             SearchMode.TV_HASH_URL -> view("https://www.youtube.com/tv#/results?search_query=$q", pkg)
+            SearchMode.TV_SEARCH_HASH -> view("https://www.youtube.com/tv#/search?q=$q", pkg)
             SearchMode.SEARCH_ACTION -> Intent(Intent.ACTION_SEARCH).apply {
                 putExtra(SearchManager.QUERY, query)
                 pkg?.let { setPackage(it) }

@@ -34,7 +34,7 @@ Japan27 now sits in **Apps** (the three-square tile on the home row). To pin it 
 Fire TV's YouTube app doesn't document which links it accepts, so the app includes a test screen. Press **☰ → YouTube link test**, then try each button. After each one, press **Back** to return.
 
 - **V1, V2, V3** should open a short video ("Me at the zoo").
-- **S1, S2, S3** should open YouTube *search results* for Fushimi Inari. **S4** just opens YouTube's home screen.
+- **S1, S2, S3, S5** should open YouTube *search results* for Fushimi Inari. **S4** just opens YouTube's home screen.
 
 Note which ones open the right thing. Then, under **Itinerary search links use**, press **Use S…** for the best search format that worked. Send the results to Claude so the app's defaults can be set. If no S button shows search results, the itinerary will switch to one chosen video per place.
 
